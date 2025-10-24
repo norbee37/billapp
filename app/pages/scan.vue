@@ -120,14 +120,18 @@
               </div>
               <div class="flex-1" style="font-family: 'Inter', sans-serif;">
                 <h4 class="font-bold text-gray-900 mb-1" style="font-family: 'Poppins', sans-serif;">{{ item.name }}</h4>
-                <div class="flex items-center gap-3 text-sm text-gray-600">
+                <div class="flex items-center gap-3 text-sm text-gray-600 flex-wrap">
                   <span class="flex items-center gap-1">
                     <UIcon name="i-heroicons-cube" class="text-sm" />
                     {{ item.quantity }} {{ item.unit || 'pcs' }}
                   </span>
                   <span v-if="item.price" class="flex items-center gap-1">
-                    <UIcon name="i-heroicons-currency-dollar" class="text-sm" />
-                    ${{ item.price.toFixed(2) }}
+                    <UIcon name="i-heroicons-banknotes" class="text-sm" />
+                    €{{ item.price.toFixed(2) }}
+                  </span>
+                  <span v-if="item.category" :class="getCategoryBadgeClass(item.category)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold">
+                    <UIcon name="i-heroicons-tag" class="text-xs" />
+                    {{ item.category }}
                   </span>
                 </div>
               </div>
@@ -165,6 +169,24 @@ const uploading = ref(false)
 const addingToStock = ref(false)
 const error = ref<string | null>(null)
 const parsedItems = ref<ParsedItem[]>([])
+
+// Get category badge color class
+const getCategoryBadgeClass = (category: string) => {
+  const colorMap: Record<string, string> = {
+    'Vegetables': 'bg-green-100 text-green-700',
+    'Fruits': 'bg-orange-100 text-orange-700',
+    'Meat': 'bg-red-100 text-red-700',
+    'Fish & Seafood': 'bg-cyan-100 text-cyan-700',
+    'Dairy': 'bg-blue-100 text-blue-700',
+    'Bakery': 'bg-amber-100 text-amber-700',
+    'Beverages': 'bg-purple-100 text-purple-700',
+    'Pantry': 'bg-yellow-100 text-yellow-700',
+    'Snacks': 'bg-pink-100 text-pink-700',
+    'Frozen': 'bg-sky-100 text-sky-700',
+    'Other': 'bg-gray-100 text-gray-700'
+  }
+  return colorMap[category] || 'bg-gray-100 text-gray-700'
+}
 
 const triggerFileInput = () => {
   if (!uploading.value) {

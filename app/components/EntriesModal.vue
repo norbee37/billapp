@@ -32,7 +32,7 @@
                   </p>
                   <span class="text-gray-400" v-if="totalValue > 0">•</span>
                   <p v-if="totalValue > 0" class="text-sm font-semibold text-green-600" style="font-family: 'Inter', sans-serif;">
-                    ${{ totalValue.toFixed(2) }}
+                    €{{ totalValue.toFixed(2) }}
                   </p>
                 </div>
               </div>
@@ -89,11 +89,11 @@
 
                 <div v-if="entry.price" class="flex items-center gap-3">
                   <div class="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <UIcon name="i-heroicons-currency-dollar" class="text-green-600 text-lg" />
+                    <UIcon name="i-heroicons-banknotes" class="text-green-600 text-lg" />
                   </div>
                   <div style="font-family: 'Inter', sans-serif;">
                     <p class="text-xs text-gray-500 font-medium">Price</p>
-                    <p class="text-base font-bold text-gray-900">${{ entry.price.toFixed(2) }}</p>
+                    <p class="text-base font-bold text-gray-900">€{{ entry.price.toFixed(2) }}</p>
                   </div>
                 </div>
 

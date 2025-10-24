@@ -23,4 +23,5 @@ export interface ParsedItem {
   quantity: number
   unit?: string
   price?: number
+  category?: string
 }

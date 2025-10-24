@@ -3,10 +3,46 @@
     <UContainer class="py-8">
       <div class="space-y-8">
         <!-- Page Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
           <div>
             <h1 class="text-4xl font-bold text-blue-900 tracking-tight" style="font-family: 'Poppins', sans-serif;">My Stock</h1>
             <p class="text-gray-600 mt-1" style="font-family: 'Inter', sans-serif;">Manage your grocery inventory</p>
+          </div>
+          
+          <!-- Category Filter (inline with header on larger screens) -->
+          <div v-if="!loading && stock.length > 0" class="flex-shrink-0">
+            <div class="flex items-center gap-2 mb-2">
+              <UIcon name="i-heroicons-funnel" class="text-gray-500 text-sm" />
+              <span class="text-sm text-gray-600 font-medium" style="font-family: 'Inter', sans-serif;">Filter:</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                @click="selectedCategory = null"
+                :class="[
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                  selectedCategory === null 
+                    ? 'bg-blue-600 text-white shadow-sm' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ]"
+                style="font-family: 'Inter', sans-serif;"
+              >
+                All ({{ groupedStock.length }})
+              </button>
+              <button
+                v-for="category in availableCategories"
+                :key="category"
+                @click="selectedCategory = category"
+                :class="[
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all',
+                  selectedCategory === category 
+                    ? 'bg-blue-600 text-white shadow-sm' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ]"
+                style="font-family: 'Inter', sans-serif;"
+              >
+                {{ category }} ({{ getCategoryCount(category) }})
+              </button>
+            </div>
           </div>
         </div>
 
@@ -58,7 +94,7 @@
               </div>
               <div>
                 <p class="text-sm text-gray-600 font-medium" style="font-family: 'Inter', sans-serif;">Unique Items</p>
-                <p class="text-2xl font-bold text-gray-900" style="font-family: 'Poppins', sans-serif;">{{ groupedStock.length }}</p>
+                <p class="text-2xl font-bold text-gray-900" style="font-family: 'Poppins', sans-serif;">{{ filteredStock.length }}</p>
               </div>
             </div>
             
@@ -74,11 +110,11 @@
             
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
               <div class="w-14 h-14 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <UIcon name="i-heroicons-currency-dollar" class="text-green-600 text-2xl" />
+                <UIcon name="i-heroicons-banknotes" class="text-green-600 text-2xl" />
               </div>
               <div>
                 <p class="text-sm text-gray-600 font-medium" style="font-family: 'Inter', sans-serif;">Total Value</p>
-                <p class="text-2xl font-bold text-gray-900" style="font-family: 'Poppins', sans-serif;">${{ totalValue.toFixed(2) }}</p>
+                <p class="text-2xl font-bold text-gray-900" style="font-family: 'Poppins', sans-serif;">€{{ totalValue.toFixed(2) }}</p>
               </div>
             </div>
           </div>
@@ -86,7 +122,7 @@
           <!-- Items Grid -->
           <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <div
-              v-for="item in groupedStock" 
+              v-for="item in filteredStock" 
               :key="item.id"
               class="bg-white rounded-2xl p-6 shadow-md border-2 border-gray-200 hover:shadow-xl hover:border-blue-300 transition-all cursor-pointer group"
             >
@@ -118,7 +154,7 @@
               
               <!-- Badges below name -->
               <div class="flex items-center gap-2 mb-4">
-                <div v-if="item.category" class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold" style="font-family: 'Inter', sans-serif;">
+                <div v-if="item.category" :class="getCategoryBadgeClass(item.category)" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold" style="font-family: 'Inter', sans-serif;">
                   <UIcon name="i-heroicons-tag" class="text-sm" />
                   <span>{{ item.category }}</span>
                 </div>
@@ -138,10 +174,10 @@
                 
                 <div v-if="item.price" class="flex items-center gap-3 text-base">
                   <div class="w-9 h-9 bg-green-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <UIcon name="i-heroicons-currency-dollar" class="text-green-600 text-lg" />
+                    <UIcon name="i-heroicons-banknotes" class="text-green-600 text-lg" />
                   </div>
                   <span class="text-gray-700 font-semibold">Price:</span>
-                  <span class="text-green-700 font-bold ml-auto text-lg">${{ item.price.toFixed(2) }}</span>
+                  <span class="text-green-700 font-bold ml-auto text-lg">€{{ item.price.toFixed(2) }}</span>
                 </div>
                 
                 <div v-if="item.expiresAt" class="flex items-center gap-3 text-base">
@@ -200,6 +236,9 @@ const selectedItem = ref<(StockItem & { ids: string[], totalQuantity: number }) 
 const isEntriesModalOpen = ref(false)
 const entriesModalData = ref<StockItem[]>([])
 
+// Category filter state
+const selectedCategory = ref<string | null>(null)
+
 // Toast helper
 const showToast = (toast: { title: string; description?: string; color: string; icon?: string }) => {
   if (process.client && (window as any).__toastInstance) {
@@ -237,8 +276,36 @@ const groupedStock = computed(() => {
   return Array.from(grouped.values())
 })
 
+// Get available categories from stock
+const availableCategories = computed(() => {
+  const categories = new Set<string>()
+  stock.value.forEach(item => {
+    if (item.category) {
+      categories.add(item.category)
+    }
+  })
+  return Array.from(categories).sort()
+})
+
+// Filter stock by selected category
+const filteredStock = computed(() => {
+  if (selectedCategory.value === null) {
+    return groupedStock.value
+  }
+  return groupedStock.value.filter(item => item.category === selectedCategory.value)
+})
+
+// Get count of items in a category
+const getCategoryCount = (category: string) => {
+  return groupedStock.value.filter(item => item.category === category).length
+}
+
 const totalValue = computed(() => {
-  const sum = stock.value.reduce((total, item) => {
+  const items = selectedCategory.value === null 
+    ? stock.value 
+    : stock.value.filter(item => item.category === selectedCategory.value)
+  
+  const sum = items.reduce((total, item) => {
     return total + (item.price || 0)
   }, 0)
   return Math.round(sum * 100) / 100
@@ -246,9 +313,13 @@ const totalValue = computed(() => {
 
 // Calculate total quantities grouped by unit
 const totalQuantityByUnit = computed(() => {
+  const items = selectedCategory.value === null 
+    ? stock.value 
+    : stock.value.filter(item => item.category === selectedCategory.value)
+  
   const unitTotals = new Map<string, number>()
   
-  stock.value.forEach(item => {
+  items.forEach(item => {
     let unit = item.unit || 'pcs'
     let quantity = item.quantity
     
@@ -280,6 +351,24 @@ const formatDate = (date: Date) => {
     day: 'numeric', 
     year: 'numeric' 
   })
+}
+
+// Get category badge color class
+const getCategoryBadgeClass = (category: string) => {
+  const colorMap: Record<string, string> = {
+    'Vegetables': 'bg-green-100 text-green-700',
+    'Fruits': 'bg-orange-100 text-orange-700',
+    'Meat': 'bg-red-100 text-red-700',
+    'Fish & Seafood': 'bg-cyan-100 text-cyan-700',
+    'Dairy': 'bg-blue-100 text-blue-700',
+    'Bakery': 'bg-amber-100 text-amber-700',
+    'Beverages': 'bg-purple-100 text-purple-700',
+    'Pantry': 'bg-yellow-100 text-yellow-700',
+    'Snacks': 'bg-pink-100 text-pink-700',
+    'Frozen': 'bg-sky-100 text-sky-700',
+    'Other': 'bg-gray-100 text-gray-700'
+  }
+  return colorMap[category] || 'bg-gray-100 text-gray-700'
 }
 
 const handleDelete = (item: StockItem & { ids: string[], totalQuantity: number }) => {

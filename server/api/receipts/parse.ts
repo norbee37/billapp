@@ -1,5 +1,36 @@
 import type { ParsedItem } from '~/types'
 
+// Category mappings
+const categoryKeywords: Record<string, string[]> = {
+  'Vegetables': ['tomato', 'potato', 'carrot', 'lettuce', 'cucumber', 'onion', 'pepper', 'broccoli', 'spinach', 'cabbage', 'celery', 'zucchini', 'eggplant', 'cauliflower', 'mushroom', 'garlic', 'ginger'],
+  'Fruits': ['apple', 'banana', 'orange', 'grape', 'strawberry', 'blueberry', 'mango', 'pineapple', 'watermelon', 'peach', 'pear', 'cherry', 'lemon', 'lime', 'kiwi', 'avocado', 'plum'],
+  'Meat': ['chicken', 'beef', 'pork', 'turkey', 'lamb', 'duck', 'bacon', 'sausage', 'ham', 'steak', 'mince', 'ground beef'],
+  'Fish & Seafood': ['salmon', 'tuna', 'cod', 'shrimp', 'prawn', 'crab', 'lobster', 'fish', 'seafood', 'tilapia', 'mackerel'],
+  'Dairy': ['milk', 'cheese', 'yogurt', 'butter', 'cream', 'ice cream', 'sour cream', 'cottage cheese', 'mozzarella', 'cheddar', 'parmesan'],
+  'Bakery': ['bread', 'baguette', 'roll', 'croissant', 'bagel', 'muffin', 'donut', 'cake', 'pastry', 'bun'],
+  'Beverages': ['juice', 'soda', 'water', 'coffee', 'tea', 'beer', 'wine', 'cola', 'lemonade', 'milk shake'],
+  'Pantry': ['pasta', 'rice', 'flour', 'sugar', 'salt', 'oil', 'vinegar', 'sauce', 'cereal', 'oats', 'beans', 'lentils', 'quinoa'],
+  'Snacks': ['chips', 'crackers', 'cookies', 'chocolate', 'candy', 'popcorn', 'nuts', 'pretzels', 'granola'],
+  'Frozen': ['frozen', 'ice'],
+  'Other': []
+}
+
+function categorizeProduct(name: string): string {
+  const lowerName = name.toLowerCase()
+  
+  for (const [category, keywords] of Object.entries(categoryKeywords)) {
+    if (category === 'Other') continue
+    
+    for (const keyword of keywords) {
+      if (lowerName.includes(keyword)) {
+        return category
+      }
+    }
+  }
+  
+  return 'Other'
+}
+
 export default defineEventHandler(async (event) => {
   const form = await readMultipartFormData(event)
   
@@ -52,8 +83,11 @@ function generateMockItems(): ParsedItem[] {
     { name: 'Cheese', quantity: 200, unit: 'g', price: 4.49 }
   ]
 
-  // Return 3-6 random items
+  // Return 3-6 random items with categories
   const numItems = Math.floor(Math.random() * 4) + 3
   const shuffled = sampleProducts.sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, numItems)
+  return shuffled.slice(0, numItems).map(item => ({
+    ...item,
+    category: categorizeProduct(item.name)
+  }))
 }
