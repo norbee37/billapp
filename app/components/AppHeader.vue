@@ -50,6 +50,26 @@
 
         <!-- Action Button -->
         <div class="flex items-center gap-3">
+          <!-- Language Selector -->
+          <div class="flex gap-1 bg-gray-100 rounded-lg p-1">
+            <button
+              v-for="lang in languageOptions"
+              :key="lang.value"
+              @click="setLanguage(lang.value as 'en' | 'de' | 'hu')"
+              :class="[
+                'px-3 py-1.5 rounded-md text-xs font-semibold transition-all flex items-center gap-1.5',
+                language === lang.value
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              ]"
+              :title="lang.label"
+              style="font-family: 'Inter', sans-serif;"
+            >
+              <span class="text-base">{{ lang.flag }}</span>
+              <span class="hidden sm:inline">{{ lang.value.toUpperCase() }}</span>
+            </button>
+          </div>
+
           <UButton 
             v-if="$route.path === '/'"
             icon="i-heroicons-plus-circle"
@@ -116,6 +136,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const mobileMenuOpen = ref(false)
+const { language, setLanguage, languageOptions } = useLanguage()
 
 // Close mobile menu when route changes
 watch(() => route.path, () => {

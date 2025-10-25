@@ -1,6 +1,8 @@
 export interface StockItem {
   id: string
-  name: string
+  nameEn: string  // English name (used as ID/grouping key)
+  nameDe: string  // German translation
+  nameHu: string  // Hungarian translation
   quantity: number
   unit?: string
   price?: number
@@ -19,7 +21,9 @@ export interface Receipt {
 }
 
 export interface ParsedItem {
-  name: string
+  nameEn: string  // English name
+  nameDe: string  // German translation
+  nameHu: string  // Hungarian translation
   quantity: number
   unit?: string
   price?: number

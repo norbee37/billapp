@@ -129,7 +129,7 @@
               <div class="flex justify-between items-center mb-4">
                 <div class="flex-1 flex items-center gap-2 flex-wrap">
                   <h3 class="font-bold text-xl text-blue-900" style="font-family: 'Poppins', sans-serif;">
-                    {{ item.name }}
+                    {{ item.displayName }}
                   </h3>
                   <button
                     v-if="item.ids.length > 1"
@@ -206,7 +206,7 @@
     <ConfirmDialog
       :is-open="isDeleteModalOpen"
       :title="'Delete Item'"
-      :message="`Are you sure you want to delete all <strong>${deleteItem?.name}</strong> (${deleteItem?.ids.length} ${deleteItem?.ids.length === 1 ? 'entry' : 'entries'})?`"
+      :message="`Are you sure you want to delete all <strong>${deleteItem?.displayName}</strong> (${deleteItem?.ids.length} ${deleteItem?.ids.length === 1 ? 'entry' : 'entries'})?`"
       @cancel="isDeleteModalOpen = false; deleteItem = null"
       @confirm="confirmDelete"
     />
@@ -214,7 +214,7 @@
     <!-- Entries Modal -->
     <EntriesModal
       :is-open="isEntriesModalOpen"
-      :item-name="selectedItem?.name || ''"
+      :item-name="selectedItem?.displayName || ''"
       :entries="entriesModalData"
       @close="isEntriesModalOpen = false; selectedItem = null"
       @delete="handleDeleteSingleEntry"
@@ -225,7 +225,8 @@
 <script setup lang="ts">
 import type { StockItem } from '~/types'
 
-const { stock, loading, fetchStock, deleteStockItem } = useStock()
+const { stock, loading, fetchStock, deleteStockItem, getItemName } = useStock()
+const { language } = useLanguage()
 
 // Delete confirmation state
 const deleteItem = ref<(StockItem & { ids: string[], totalQuantity: number }) | null>(null)
@@ -250,12 +251,12 @@ onMounted(() => {
   fetchStock()
 })
 
-// Group items by name and unit, sum quantities
+// Group items by English name (ID) and unit, sum quantities
 const groupedStock = computed(() => {
-  const grouped = new Map<string, StockItem & { ids: string[], totalQuantity: number }>()
+  const grouped = new Map<string, StockItem & { ids: string[], totalQuantity: number, displayName: string }>()
   
   stock.value.forEach(item => {
-    const key = `${item.name.toLowerCase()}_${item.unit || 'pcs'}`
+    const key = `${item.nameEn.toLowerCase()}_${item.unit || 'pcs'}`
     if (grouped.has(key)) {
       const existing = grouped.get(key)!
       existing.totalQuantity += item.quantity
@@ -268,7 +269,8 @@ const groupedStock = computed(() => {
       grouped.set(key, {
         ...item,
         ids: [item.id],
-        totalQuantity: item.quantity
+        totalQuantity: item.quantity,
+        displayName: getItemName(item, language.value)
       })
     }
   })

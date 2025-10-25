@@ -1,25 +1,47 @@
 <template>
   <div class="pb-12">
     <UContainer class="py-8">
-      <div class="max-w-3xl mx-auto space-y-8">
+      <div class="space-y-8">
         <!-- Page Header -->
-        <div class="flex items-center gap-4">
-          <UButton 
-            icon="i-heroicons-arrow-left"
-            size="lg"
-            variant="ghost"
-            color="gray"
-            class="hover:bg-gray-100 transition-all"
-            @click="navigateTo('/')"
-          />
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
           <div>
             <h1 class="text-4xl font-bold text-blue-900 tracking-tight" style="font-family: 'Poppins', sans-serif;">Scan Receipt</h1>
             <p class="text-gray-600 mt-1" style="font-family: 'Inter', sans-serif;">Upload a receipt to extract items</p>
           </div>
+
+          <!-- Provider Selector -->
+          <div class="flex-shrink-0">
+            <div class="flex items-center gap-2 mb-2">
+              <UIcon name="i-heroicons-sparkles" class="text-gray-500 text-sm" />
+              <span class="text-sm text-gray-600 font-medium" style="font-family: 'Inter', sans-serif;">Parser:</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="option in providerOptions"
+                :key="option.value"
+                @click="selectedProvider = option.value"
+                :disabled="option.disabled"
+                :class="[
+                  'px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5',
+                  selectedProvider === option.value 
+                    ? 'bg-blue-600 text-white shadow-sm' 
+                    : option.disabled
+                    ? 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ]"
+                style="font-family: 'Inter', sans-serif;"
+              >
+                <UIcon :name="option.icon" class="text-xs" />
+                {{ option.label }}
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- Upload Card -->
-        <div class="bg-white rounded-3xl shadow-lg border-2 border-gray-200 overflow-hidden">
+        <!-- Upload and Results Container (centered) -->
+        <div class="max-w-3xl mx-auto space-y-8">
+          <!-- Upload Card -->
+          <div class="bg-white rounded-3xl shadow-lg border-2 border-gray-200 overflow-hidden">
           <div class="p-8">
             <div 
               class="border-3 border-dashed rounded-2xl p-12 cursor-pointer transition-all"
@@ -119,7 +141,7 @@
                 {{ index + 1 }}
               </div>
               <div class="flex-1" style="font-family: 'Inter', sans-serif;">
-                <h4 class="font-bold text-gray-900 mb-1" style="font-family: 'Poppins', sans-serif;">{{ item.name }}</h4>
+                <h4 class="font-bold text-gray-900 mb-1" style="font-family: 'Poppins', sans-serif;">{{ getItemName(item) }}</h4>
                 <div class="flex items-center gap-3 text-sm text-gray-600 flex-wrap">
                   <span class="flex items-center gap-1">
                     <UIcon name="i-heroicons-cube" class="text-sm" />
@@ -146,6 +168,7 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
     </UContainer>
   </div>
@@ -155,6 +178,7 @@
 import type { ParsedItem } from '~/types'
 
 const { addToStock } = useStock()
+const { language } = useLanguage()
 
 // Toast helper
 const showToast = (toast: { title: string; description?: string; color: string; icon?: string }) => {
@@ -162,6 +186,36 @@ const showToast = (toast: { title: string; description?: string; color: string; 
     (window as any).__toastInstance.addToast(toast)
   }
 }
+
+// Get item name based on selected language
+const getItemName = (item: ParsedItem) => {
+  if (language.value === 'de') return item.nameDe
+  if (language.value === 'hu') return item.nameHu
+  return item.nameEn
+}
+
+// Provider selection
+const selectedProvider = ref('dummy')
+const providerOptions = [
+  { 
+    value: 'dummy', 
+    label: 'Mock Data', 
+    icon: 'i-heroicons-beaker',
+    disabled: false
+  },
+  { 
+    value: 'gemini', 
+    label: 'Gemini AI', 
+    icon: 'i-heroicons-sparkles',
+    disabled: false
+  },
+  { 
+    value: 'chatgpt', 
+    label: 'ChatGPT (Soon)', 
+    icon: 'i-heroicons-chat-bubble-left-right',
+    disabled: true
+  }
+]
 
 const fileInput = ref<HTMLInputElement>()
 const isDragging = ref(false)
@@ -221,7 +275,10 @@ const uploadFile = async (file: File) => {
 
     const response = await $fetch<{ items: ParsedItem[] }>('/api/receipts/parse', {
       method: 'POST',
-      body: formData
+      body: formData,
+      query: {
+        provider: selectedProvider.value
+      }
     })
 
     parsedItems.value = response.items

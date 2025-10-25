@@ -32,6 +32,7 @@ See [DESIGN.md](DESIGN.md) for complete design system documentation.
 ### Prerequisites
 
 - Node.js 18+ and npm
+- Google Gemini API key (free tier available)
 
 ### Installation
 
@@ -39,11 +40,17 @@ See [DESIGN.md](DESIGN.md) for complete design system documentation.
 # Install dependencies
 npm install
 
+# Set up environment variables
+cp .env.example .env
+# Edit .env and add your GEMINI_API_KEY from https://aistudio.google.com/app/apikey
+
 # Run development server
 npm run dev
 ```
 
 The app will be available at `http://localhost:3000`
+
+**Note:** Without a Gemini API key, the app will use mock data for receipt parsing.
 
 ## Usage
 
@@ -76,7 +83,9 @@ server/
 
 ## Next Steps (Future Enhancements)
 
-- [ ] Integrate real OCR service (Google Vision, AWS Textract, Azure CV)
+- [ ] Add OpenAI GPT-4 Vision as alternative LLM provider
+- [ ] Add UI toggle to switch between LLM providers
+- [ ] Fine-tune prompts for better accuracy with cryptic receipts
 - [ ] Add database persistence (MongoDB, PostgreSQL, etc.)
 - [ ] Implement user authentication
 - [ ] Add categories and filtering
@@ -93,20 +102,28 @@ server/
 - **Nuxt UI**: Component library
 - **TypeScript**: Type safety
 - **Tailwind CSS**: Styling (via Nuxt UI)
+- **Google Gemini**: AI-powered receipt parsing
+
+## Receipt Parsing
+
+The app uses **Google Gemini 2.0 Flash** for intelligent receipt parsing:
+
+1. Upload a receipt image (JPG, PNG)
+2. Gemini analyzes the image and extracts:
+   - Store name
+   - Product names (expanded from abbreviations)
+   - Quantities and units (kg, g, L, ml, pcs)
+   - Individual item prices
+3. Items are automatically categorized
+4. Add to your stock with one click
+
+**Prompting:** The parsing prompt is designed to handle cryptic receipt formats and can be iteratively improved. See `/server/api/receipts/parse.ts` to adjust the prompt for better accuracy.
+
+**Free Tier:** Google Gemini offers 1M requests/day for free, perfect for personal use.
 
 ## Notes
 
-**Current Implementation**: The receipt parsing currently returns mock data. To implement real OCR:
-
-1. Choose an OCR service:
-   - Google Cloud Vision API
-   - AWS Textract
-   - Azure Computer Vision
-   - Tesseract.js (client-side)
-
-2. Update `/server/api/receipts/parse.ts` with actual OCR integration
-
-3. Install required packages and configure API keys
+**API Key Required**: Get a free Gemini API key from [Google AI Studio](https://aistudio.google.com/app/apikey) and add it to your `.env` file. Without it, the app will use mock data.
 
 ## License
 

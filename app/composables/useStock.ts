@@ -59,12 +59,20 @@ export const useStock = () => {
     }
   }
 
+  // Helper to get display name based on language
+  const getItemName = (item: StockItem, lang: 'en' | 'de' | 'hu' = 'en') => {
+    if (lang === 'de') return item.nameDe
+    if (lang === 'hu') return item.nameHu
+    return item.nameEn
+  }
+
   return {
     stock,
     loading,
     fetchStock,
     addToStock,
     updateStockItem,
-    deleteStockItem
+    deleteStockItem,
+    getItemName
   }
 }
