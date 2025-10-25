@@ -46,6 +46,16 @@
             <UIcon name="i-heroicons-camera" class="text-lg" />
             <span>Scan</span>
           </NuxtLink>
+
+          <NuxtLink 
+            to="/recipes" 
+            class="flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all"
+            :class="{ 'text-blue-700 bg-blue-50': $route.path === '/recipes' }"
+            style="font-family: 'Inter', sans-serif;"
+          >
+            <UIcon name="i-heroicons-book-open" class="text-lg" />
+            <span>Recipes</span>
+          </NuxtLink>
         </nav>
 
         <!-- Action Button -->
@@ -126,6 +136,17 @@
           >
             <UIcon name="i-heroicons-camera" class="text-xl" />
             <span>Scan Receipt</span>
+          </NuxtLink>
+
+          <NuxtLink 
+            to="/recipes" 
+            class="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-all"
+            :class="{ 'text-blue-700 bg-blue-100': $route.path === '/recipes' }"
+            style="font-family: 'Inter', sans-serif;"
+            @click="mobileMenuOpen = false"
+          >
+            <UIcon name="i-heroicons-book-open" class="text-xl" />
+            <span>Recipes</span>
           </NuxtLink>
         </nav>
       </div>
