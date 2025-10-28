@@ -48,6 +48,28 @@ const categoryKeywords: Record<string, string[]> = {
   'Other': []
 }
 
+// Waste category mappings for packaging types
+const wasteCategoryKeywords: Record<string, string[]> = {
+  'Plastic': [
+    'bottle', 'bag', 'wrap', 'tray', 'container', 'pack', 'packaging', 'film', 'plastic'
+  ],
+  'Glass': [
+    'jar', 'glass', 'bottle glass'
+  ],
+  'Paper': [
+    'cardboard', 'box', 'carton', 'paper', 'bag paper'
+  ],
+  'Metal': [
+    'can', 'tin', 'aluminum', 'aluminium', 'foil', 'metal'
+  ],
+  'Organic': [
+    'loose', 'fresh', 'unpackaged', 'bulk'
+  ],
+  'Mixed': [
+    'tetra pak', 'tetrapak', 'composite', 'mixed material'
+  ]
+}
+
 function categorizeProduct(name: string): string {
   const lowerName = name.toLowerCase()
   
@@ -79,6 +101,26 @@ function categorizeProduct(name: string): string {
   return 'Other'
 }
 
+function categorizeWaste(packagingInfo: string): string {
+  const lowerInfo = packagingInfo.toLowerCase()
+  
+  // Priority order for waste categories
+  const priorityOrder = ['Glass', 'Metal', 'Paper', 'Mixed', 'Plastic', 'Organic']
+  
+  for (const category of priorityOrder) {
+    const keywords = wasteCategoryKeywords[category]
+    if (!keywords) continue
+    
+    for (const keyword of keywords) {
+      if (lowerInfo.includes(keyword)) {
+        return category
+      }
+    }
+  }
+  
+  return 'Plastic' // Default to plastic as most common packaging
+}
+
 const RECEIPT_PARSING_PROMPT = `You are a receipt parsing assistant. Analyze the receipt image and extract ALL items purchased.
 
 SUPPORTED RECEIPT LANGUAGES: English, German, Hungarian
@@ -92,6 +134,24 @@ RULES:
 5. Extract individual item prices (not subtotals or totals)
 6. If quantity is unclear, assume 1 piece
 7. Ignore non-product lines (payment info, store details, promotions)
+8. **CRITICAL: Determine the PACKAGING TYPE for waste management**
+
+PACKAGING DETECTION:
+- Analyze the store name and product type to infer packaging
+- Common packaging types:
+  * Plastic: bottles, bags, wrapped items, trays, most dairy, meat, cheese
+  * Glass: glass bottles, jars (pickles, jams)
+  * Paper: cardboard boxes, paper bags, egg cartons
+  * Metal: cans (tuna, beans, soda cans)
+  * Organic: loose fresh produce (fruits, vegetables sold by weight without packaging)
+  * Mixed: Tetra Pak (juice boxes, milk cartons), composite materials
+- Examples:
+  * "Milk 1L" → likely plastic bottle or mixed (Tetra Pak)
+  * "Cheese sliced 200g" → plastic packaging
+  * "Tomatoes 500g" → organic (loose) or plastic (if pre-packaged)
+  * "Beer bottle" → glass bottle
+  * "Tuna can" → metal can
+  * "Orange juice carton" → mixed (Tetra Pak)
 
 TRANSLATION EXAMPLES:
 Receipt says "Milch" → Output: { nameEn: "Milk", nameDe: "Milch", nameHu: "Tej" }
@@ -114,12 +174,13 @@ OUTPUT FORMAT (JSON only, no markdown):
       "nameHu": "Terméknév magyarul",
       "quantity": 1.5,
       "unit": "kg|g|L|ml|pcs",
-      "price": 2.99
+      "price": 2.99,
+      "packaging": "plastic|glass|paper|metal|organic|mixed"
     }
   ]
 }
 
-Return ONLY valid JSON, nothing else. Every item MUST have all three name fields (nameEn, nameDe, nameHu).`
+Return ONLY valid JSON, nothing else. Every item MUST have all three name fields (nameEn, nameDe, nameHu) and a packaging field.`
 
 async function parseReceiptWithGemini(imageData: Buffer, mimeType: string): Promise<ParsedItem[]> {
   const apiKey = process.env.GEMINI_API_KEY
@@ -158,7 +219,8 @@ async function parseReceiptWithGemini(imageData: Buffer, mimeType: string): Prom
       quantity: item.quantity || 1,
       unit: item.unit || 'pcs',
       price: item.price || 0,
-      category: categorizeProduct(item.nameEn || item.name || '')
+      category: categorizeProduct(item.nameEn || item.name || ''),
+      wasteCategory: item.packaging ? categorizeWaste(item.packaging) : 'Plastic'
     }))
 
     return items
@@ -221,16 +283,16 @@ export default defineEventHandler(async (event) => {
 // Generate mock parsed items for demonstration
 function generateMockItems(): ParsedItem[] {
   const sampleProducts = [
-    { nameEn: 'Organic Apples', nameDe: 'Bio Äpfel', nameHu: 'Bio Alma', quantity: 1.5, unit: 'kg', price: 4.99 },
-    { nameEn: 'Whole Milk', nameDe: 'Vollmilch', nameHu: 'Teljes Tej', quantity: 2, unit: 'L', price: 3.49 },
-    { nameEn: 'Bread', nameDe: 'Brot', nameHu: 'Kenyér', quantity: 1, unit: 'loaf', price: 2.99 },
-    { nameEn: 'Eggs', nameDe: 'Eier', nameHu: 'Tojás', quantity: 12, unit: 'pcs', price: 4.99 },
-    { nameEn: 'Chicken Breast', nameDe: 'Hähnchenbrust', nameHu: 'Csirkemell', quantity: 0.8, unit: 'kg', price: 9.99 },
-    { nameEn: 'Tomatoes', nameDe: 'Tomaten', nameHu: 'Paradicsom', quantity: 0.5, unit: 'kg', price: 2.49 },
-    { nameEn: 'Orange Juice', nameDe: 'Orangensaft', nameHu: 'Narancslé', quantity: 1, unit: 'L', price: 3.99 },
-    { nameEn: 'Butter', nameDe: 'Butter', nameHu: 'Vaj', quantity: 250, unit: 'g', price: 3.49 },
-    { nameEn: 'Pasta', nameDe: 'Nudeln', nameHu: 'Tészta', quantity: 500, unit: 'g', price: 1.99 },
-    { nameEn: 'Cheese', nameDe: 'Käse', nameHu: 'Sajt', quantity: 200, unit: 'g', price: 4.49 }
+    { nameEn: 'Organic Apples', nameDe: 'Bio Äpfel', nameHu: 'Bio Alma', quantity: 1.5, unit: 'kg', price: 4.99, packaging: 'organic' },
+    { nameEn: 'Whole Milk', nameDe: 'Vollmilch', nameHu: 'Teljes Tej', quantity: 2, unit: 'L', price: 3.49, packaging: 'mixed' },
+    { nameEn: 'Bread', nameDe: 'Brot', nameHu: 'Kenyér', quantity: 1, unit: 'loaf', price: 2.99, packaging: 'paper' },
+    { nameEn: 'Eggs', nameDe: 'Eier', nameHu: 'Tojás', quantity: 12, unit: 'pcs', price: 4.99, packaging: 'paper' },
+    { nameEn: 'Chicken Breast', nameDe: 'Hähnchenbrust', nameHu: 'Csirkemell', quantity: 0.8, unit: 'kg', price: 9.99, packaging: 'plastic' },
+    { nameEn: 'Tomatoes', nameDe: 'Tomaten', nameHu: 'Paradicsom', quantity: 0.5, unit: 'kg', price: 2.49, packaging: 'organic' },
+    { nameEn: 'Orange Juice', nameDe: 'Orangensaft', nameHu: 'Narancslé', quantity: 1, unit: 'L', price: 3.99, packaging: 'mixed' },
+    { nameEn: 'Butter', nameDe: 'Butter', nameHu: 'Vaj', quantity: 250, unit: 'g', price: 3.49, packaging: 'paper' },
+    { nameEn: 'Pasta', nameDe: 'Nudeln', nameHu: 'Tészta', quantity: 500, unit: 'g', price: 1.99, packaging: 'plastic' },
+    { nameEn: 'Cheese', nameDe: 'Käse', nameHu: 'Sajt', quantity: 200, unit: 'g', price: 4.49, packaging: 'plastic' }
   ]
 
   // Return 3-6 random items with categories
@@ -238,6 +300,7 @@ function generateMockItems(): ParsedItem[] {
   const shuffled = sampleProducts.sort(() => Math.random() - 0.5)
   return shuffled.slice(0, numItems).map(item => ({
     ...item,
-    category: categorizeProduct(item.nameEn)
+    category: categorizeProduct(item.nameEn),
+    wasteCategory: categorizeWaste(item.packaging)
   }))
 }

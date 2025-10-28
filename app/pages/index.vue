@@ -123,16 +123,16 @@
           <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             <div
               v-for="item in filteredStock" 
-              :key="item.id"
+              :key="`${item.nameEn}_${item.unit}`"
               class="bg-white rounded-2xl p-6 shadow-md border-2 border-gray-200 hover:shadow-xl hover:border-blue-300 transition-all cursor-pointer group"
             >
-              <div class="flex justify-between items-center mb-4">
+              <div class="flex justify-between items-start mb-4">
                 <div class="flex-1 flex items-center gap-2 flex-wrap">
                   <h3 class="font-bold text-xl text-blue-900" style="font-family: 'Poppins', sans-serif;">
                     {{ item.displayName }}
                   </h3>
                   <button
-                    v-if="item.ids.length > 1"
+                    v-if="item.ids && item.ids.length > 1"
                     @click.stop="showEntries(item)"
                     class="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-md text-xs font-semibold hover:bg-yellow-200 hover:shadow-md transition-all cursor-pointer"
                     style="font-family: 'Inter', sans-serif;"
@@ -141,6 +141,14 @@
                     <span>{{ item.ids.length }}</span>
                     <UIcon name="i-heroicons-chevron-right" class="text-[10px]" />
                   </button>
+                  <div v-if="item.category" :class="getCategoryBadgeClass(item.category)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold" style="font-family: 'Inter', sans-serif;">
+                    <UIcon name="i-heroicons-tag" class="text-xs" />
+                    <span>{{ item.category }}</span>
+                  </div>
+                  <div v-if="item.wasteCategory" :class="getWasteCategoryBadgeClass(item.wasteCategory)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold" style="font-family: 'Inter', sans-serif;">
+                    <UIcon name="i-heroicons-trash" class="text-xs" />
+                    <span>{{ item.wasteCategory }}</span>
+                  </div>
                 </div>
                 <UButton 
                   icon="i-heroicons-trash"
@@ -150,14 +158,6 @@
                   class="opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all"
                   @click="handleDelete(item)"
                 />
-              </div>
-              
-              <!-- Badges below name -->
-              <div class="flex items-center gap-2 mb-4">
-                <div v-if="item.category" :class="getCategoryBadgeClass(item.category)" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold" style="font-family: 'Inter', sans-serif;">
-                  <UIcon name="i-heroicons-tag" class="text-sm" />
-                  <span>{{ item.category }}</span>
-                </div>
               </div>
               
               <!-- Divider -->
@@ -259,12 +259,15 @@ const groupedStock = computed(() => {
     const key = `${item.nameEn.toLowerCase()}_${item.unit || 'pcs'}`
     if (grouped.has(key)) {
       const existing = grouped.get(key)!
-      existing.totalQuantity += item.quantity
-      existing.ids.push(item.id)
-      // Update price to latest
-      if (item.price) {
-        existing.price = item.price
-      }
+      // Create a new object instead of mutating
+      grouped.set(key, {
+        ...existing,
+        totalQuantity: existing.totalQuantity + item.quantity,
+        ids: [...existing.ids, item.id],
+        price: item.price || existing.price,
+        category: item.category || existing.category,
+        wasteCategory: item.wasteCategory || existing.wasteCategory
+      })
     } else {
       grouped.set(key, {
         ...item,
@@ -371,6 +374,19 @@ const getCategoryBadgeClass = (category: string) => {
     'Other': 'bg-gray-100 text-gray-700'
   }
   return colorMap[category] || 'bg-gray-100 text-gray-700'
+}
+
+// Get waste category badge color class - earthy/muted tones
+const getWasteCategoryBadgeClass = (wasteCategory: string) => {
+  const colorMap: Record<string, string> = {
+    'Plastic': 'bg-rose-50 text-rose-700',
+    'Glass': 'bg-teal-50 text-teal-700',
+    'Paper': 'bg-stone-100 text-stone-700',
+    'Metal': 'bg-zinc-100 text-zinc-700',
+    'Organic': 'bg-emerald-50 text-emerald-700',
+    'Mixed': 'bg-indigo-50 text-indigo-700'
+  }
+  return colorMap[wasteCategory] || 'bg-gray-50 text-gray-700'
 }
 
 const handleDelete = (item: StockItem & { ids: string[], totalQuantity: number }) => {

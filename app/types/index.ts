@@ -7,6 +7,7 @@ export interface StockItem {
   unit?: string
   price?: number
   category?: string
+  wasteCategory?: string
   addedAt: Date
   expiresAt?: Date
 }
@@ -28,4 +29,5 @@ export interface ParsedItem {
   unit?: string
   price?: number
   category?: string
+  wasteCategory?: string
 }

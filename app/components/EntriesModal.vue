@@ -107,6 +107,16 @@
                   </div>
                 </div>
 
+                <div v-if="entry.wasteCategory" class="flex items-center gap-3">
+                  <div class="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <UIcon name="i-heroicons-trash" class="text-gray-600 text-lg" />
+                  </div>
+                  <div style="font-family: 'Inter', sans-serif;">
+                    <p class="text-xs text-gray-500 font-medium">Waste Category</p>
+                    <p class="text-base font-bold text-gray-900">{{ entry.wasteCategory }}</p>
+                  </div>
+                </div>
+
                 <div class="flex items-center gap-3">
                   <div class="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <UIcon name="i-heroicons-calendar" class="text-gray-600 text-lg" />
