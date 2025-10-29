@@ -21,7 +21,8 @@ export default defineEventHandler(async (event) => {
       ...stockItems[itemIndex],
       ...updates,
       id: stockItems[itemIndex].id, // Ensure ID doesn't change
-      addedAt: stockItems[itemIndex].addedAt // Preserve original date
+      purchaseDate: stockItems[itemIndex].purchaseDate, // Preserve original purchase date
+      createdAt: stockItems[itemIndex].createdAt // Preserve creation date
     }
     return stockItems[itemIndex]
   }

@@ -151,7 +151,7 @@
                     <UIcon name="i-heroicons-banknotes" class="text-sm" />
                     €{{ item.price.toFixed(2) }}
                   </span>
-                  <span v-if="item.category" :class="getCategoryBadgeClass(item.category)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold">
+                  <span v-if="item.category" :class="getCategoryBadgeClass(item.category)" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border shadow-sm">
                     <UIcon name="i-heroicons-tag" class="text-xs" />
                     {{ item.category }}
                   </span>
@@ -227,19 +227,19 @@ const parsedItems = ref<ParsedItem[]>([])
 // Get category badge color class
 const getCategoryBadgeClass = (category: string) => {
   const colorMap: Record<string, string> = {
-    'Vegetables': 'bg-green-100 text-green-700',
-    'Fruits': 'bg-orange-100 text-orange-700',
-    'Meat': 'bg-red-100 text-red-700',
-    'Fish & Seafood': 'bg-cyan-100 text-cyan-700',
-    'Dairy': 'bg-blue-100 text-blue-700',
-    'Bakery': 'bg-amber-100 text-amber-700',
-    'Beverages': 'bg-purple-100 text-purple-700',
-    'Pantry': 'bg-yellow-100 text-yellow-700',
-    'Snacks': 'bg-pink-100 text-pink-700',
-    'Frozen': 'bg-sky-100 text-sky-700',
-    'Other': 'bg-gray-100 text-gray-700'
+    'Vegetables': 'bg-green-100 text-green-700 border-green-200',
+    'Fruits': 'bg-orange-100 text-orange-700 border-orange-200',
+    'Meat': 'bg-red-100 text-red-700 border-red-200',
+    'Fish & Seafood': 'bg-cyan-100 text-cyan-700 border-cyan-200',
+    'Dairy': 'bg-blue-100 text-blue-700 border-blue-200',
+    'Bakery': 'bg-amber-100 text-amber-700 border-amber-200',
+    'Beverages': 'bg-purple-100 text-purple-700 border-purple-200',
+    'Pantry': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    'Snacks': 'bg-pink-100 text-pink-700 border-pink-200',
+    'Frozen': 'bg-sky-100 text-sky-700 border-sky-200',
+    'Other': 'bg-gray-100 text-gray-700 border-gray-200'
   }
-  return colorMap[category] || 'bg-gray-100 text-gray-700'
+  return colorMap[category] || 'bg-gray-100 text-gray-700 border-gray-200'
 }
 
 const triggerFileInput = () => {

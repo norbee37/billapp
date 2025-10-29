@@ -29,8 +29,9 @@ export default defineEventHandler(async (event) => {
         unit: item.unit,
         price: item.price,
         category: item.category,
-        wasteCategory: item.wasteCategory,
-        addedAt: new Date(),
+        wasteCategories: item.wasteCategories || (item.wasteCategory ? [item.wasteCategory] : undefined),
+        purchaseDate: item.purchaseDate ? new Date(item.purchaseDate) : new Date(),
+        createdAt: new Date(),
         expiresAt: item.expiresAt
       }
       stockItems.push(newItem)

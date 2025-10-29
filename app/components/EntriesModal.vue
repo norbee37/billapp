@@ -107,13 +107,25 @@
                   </div>
                 </div>
 
-                <div v-if="entry.wasteCategory" class="flex items-center gap-3">
-                  <div class="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <UIcon name="i-heroicons-trash" class="text-gray-600 text-lg" />
-                  </div>
-                  <div style="font-family: 'Inter', sans-serif;">
-                    <p class="text-xs text-gray-500 font-medium">Waste Category</p>
-                    <p class="text-base font-bold text-gray-900">{{ entry.wasteCategory }}</p>
+                <div v-if="entry.wasteCategories && entry.wasteCategories.length > 0" class="bg-gradient-to-r from-gray-50 to-white rounded-lg p-3 border-2 border-gray-200">
+                  <div class="flex items-start gap-3">
+                    <div class="w-9 h-9 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <UIcon name="i-heroicons-archive-box" class="text-gray-600 text-lg" />
+                    </div>
+                    <div class="flex-1" style="font-family: 'Inter', sans-serif;">
+                      <p class="text-xs text-gray-500 font-medium mb-2">Packaging/Waste</p>
+                      <div class="flex flex-wrap gap-1.5">
+                        <span 
+                          v-for="wasteCategory in entry.wasteCategories" 
+                          :key="wasteCategory"
+                          :class="getWasteCategoryBadgeClass(wasteCategory)"
+                          class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm border"
+                        >
+                          <UIcon :name="getWasteCategoryIcon(wasteCategory)" class="text-xs" />
+                          {{ wasteCategory }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -122,8 +134,8 @@
                     <UIcon name="i-heroicons-calendar" class="text-gray-600 text-lg" />
                   </div>
                   <div style="font-family: 'Inter', sans-serif;">
-                    <p class="text-xs text-gray-500 font-medium">Added</p>
-                    <p class="text-base font-bold text-gray-900">{{ formatDate(entry.addedAt) }}</p>
+                    <p class="text-xs text-gray-500 font-medium">Purchased</p>
+                    <p class="text-base font-bold text-gray-900">{{ formatDate(entry.purchaseDate) }}</p>
                   </div>
                 </div>
 
@@ -164,10 +176,12 @@ const onClose = () => {
 }
 
 const formatDate = (date: Date) => {
-  return new Date(date).toLocaleDateString('en-US', { 
+  return new Date(date).toLocaleString('en-US', { 
     month: 'short', 
     day: 'numeric', 
-    year: 'numeric' 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   })
 }
 
@@ -179,6 +193,32 @@ const totalQuantity = computed(() => {
 const totalValue = computed(() => {
   return props.entries.reduce((sum, entry) => sum + (entry.price || 0), 0)
 })
+
+// Get waste category badge color class - distinctive styling for packaging info
+const getWasteCategoryBadgeClass = (wasteCategory: string) => {
+  const colorMap: Record<string, string> = {
+    'Plastic': 'bg-red-100 text-red-700 border-red-200',
+    'Glass': 'bg-cyan-100 text-cyan-700 border-cyan-200',
+    'Paper': 'bg-amber-100 text-amber-700 border-amber-200',
+    'Metal': 'bg-slate-100 text-slate-700 border-slate-200',
+    'Organic': 'bg-green-100 text-green-700 border-green-200',
+    'Mixed': 'bg-purple-100 text-purple-700 border-purple-200'
+  }
+  return colorMap[wasteCategory] || 'bg-gray-100 text-gray-700 border-gray-200'
+}
+
+// Get waste category icon
+const getWasteCategoryIcon = (wasteCategory: string) => {
+  const iconMap: Record<string, string> = {
+    'Plastic': 'i-heroicons-beaker',
+    'Glass': 'i-heroicons-square-3-stack-3d',
+    'Paper': 'i-heroicons-document',
+    'Metal': 'i-heroicons-cube',
+    'Organic': 'i-heroicons-leaf',
+    'Mixed': 'i-heroicons-rectangle-stack'
+  }
+  return iconMap[wasteCategory] || 'i-heroicons-trash'
+}
 
 // Close on escape key
 onMounted(() => {

@@ -7,8 +7,9 @@ export interface StockItem {
   unit?: string
   price?: number
   category?: string
-  wasteCategory?: string
-  addedAt: Date
+  wasteCategories?: string[]  // Array of waste categories (products can have multiple)
+  purchaseDate: Date  // Date from the receipt/bill
+  createdAt: Date  // When the entry was added to the system
   expiresAt?: Date
 }
 
@@ -29,5 +30,6 @@ export interface ParsedItem {
   unit?: string
   price?: number
   category?: string
-  wasteCategory?: string
+  wasteCategories?: string[]  // Array of waste categories (products can have multiple)
+  purchaseDate?: Date  // Date from the receipt
 }

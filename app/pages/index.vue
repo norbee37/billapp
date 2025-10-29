@@ -127,27 +127,48 @@
               class="bg-white rounded-2xl p-6 shadow-md border-2 border-gray-200 hover:shadow-xl hover:border-blue-300 transition-all cursor-pointer group"
             >
               <div class="flex justify-between items-start mb-4">
-                <div class="flex-1 flex items-center gap-2 flex-wrap">
-                  <h3 class="font-bold text-xl text-blue-900" style="font-family: 'Poppins', sans-serif;">
+                <div class="flex-1">
+                  <h3 class="font-bold text-xl text-blue-900 mb-2" style="font-family: 'Poppins', sans-serif;">
                     {{ item.displayName }}
                   </h3>
-                  <button
-                    v-if="item.ids && item.ids.length > 1"
-                    @click.stop="showEntries(item)"
-                    class="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-md text-xs font-semibold hover:bg-yellow-200 hover:shadow-md transition-all cursor-pointer"
-                    style="font-family: 'Inter', sans-serif;"
-                  >
-                    <UIcon name="i-heroicons-squares-2x2" class="text-xs" />
-                    <span>{{ item.ids.length }}</span>
-                    <UIcon name="i-heroicons-chevron-right" class="text-[10px]" />
-                  </button>
-                  <div v-if="item.category" :class="getCategoryBadgeClass(item.category)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold" style="font-family: 'Inter', sans-serif;">
-                    <UIcon name="i-heroicons-tag" class="text-xs" />
-                    <span>{{ item.category }}</span>
-                  </div>
-                  <div v-if="item.wasteCategory" :class="getWasteCategoryBadgeClass(item.wasteCategory)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold" style="font-family: 'Inter', sans-serif;">
-                    <UIcon name="i-heroicons-trash" class="text-xs" />
-                    <span>{{ item.wasteCategory }}</span>
+                  
+                  <!-- All badges in one row -->
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <!-- Multiple entries badge -->
+                    <button
+                      v-if="item.ids && item.ids.length > 1"
+                      @click.stop="showEntries(item)"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 bg-yellow-100 text-yellow-700 rounded-lg text-xs font-bold hover:bg-yellow-200 hover:shadow-md transition-all cursor-pointer border border-yellow-200 shadow-sm"
+                      style="font-family: 'Inter', sans-serif;"
+                    >
+                      <UIcon name="i-heroicons-squares-2x2" class="text-xs" />
+                      <span>{{ item.ids.length }}</span>
+                      <UIcon name="i-heroicons-chevron-right" class="text-[10px]" />
+                    </button>
+                    
+                    <!-- Category badge -->
+                    <div v-if="item.category" :class="getCategoryBadgeClass(item.category)" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border shadow-sm" style="font-family: 'Inter', sans-serif;">
+                      <UIcon name="i-heroicons-tag" class="text-xs" />
+                      <span>{{ item.category }}</span>
+                    </div>
+                    
+                    <!-- Spacer to push waste badges to the right -->
+                    <div class="flex-1"></div>
+                    
+                    <!-- Waste category badges aligned to the right -->
+                    <template v-if="item.wasteCategories && item.wasteCategories.length > 0">
+                      <span 
+                        v-for="(wasteCategory, idx) in item.wasteCategories" 
+                        :key="`${wasteCategory}-${idx}`"
+                        :class="getWasteCategoryBadgeClass(wasteCategory)" 
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold shadow-sm border"
+                        style="font-family: 'Inter', sans-serif;"
+                        :title="`Packaging: ${wasteCategory}`"
+                      >
+                        <UIcon :name="getWasteCategoryIcon(wasteCategory)" class="text-xs" />
+                        <span class="whitespace-nowrap">{{ wasteCategory }}</span>
+                      </span>
+                    </template>
                   </div>
                 </div>
                 <UButton 
@@ -155,7 +176,7 @@
                   variant="ghost" 
                   color="red"
                   size="md"
-                  class="opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all"
+                  class="opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all flex-shrink-0 ml-2"
                   @click="handleDelete(item)"
                 />
               </div>
@@ -190,10 +211,10 @@
 
                 <div class="flex items-center gap-3 text-sm pt-2 border-t border-gray-100">
                   <div class="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <UIcon name="i-heroicons-clock" class="text-gray-500" />
+                    <UIcon name="i-heroicons-calendar" class="text-gray-500" />
                   </div>
-                  <span class="text-gray-600 font-medium">Added:</span>
-                  <span class="text-gray-500 font-semibold ml-auto">{{ formatDate(item.addedAt) }}</span>
+                  <span class="text-gray-600 font-medium">Purchased:</span>
+                  <span class="text-gray-500 font-semibold ml-auto">{{ formatDate(item.purchaseDate) }}</span>
                 </div>
               </div>
             </div>
@@ -257,8 +278,31 @@ const groupedStock = computed(() => {
   
   stock.value.forEach(item => {
     const key = `${item.nameEn.toLowerCase()}_${item.unit || 'pcs'}`
+    
+    // Ensure wasteCategories is always an array (migration from old wasteCategory string)
+    const itemWasteCategories = item.wasteCategories || 
+      ((item as any).wasteCategory ? [(item as any).wasteCategory] : [])
+    
+    // Debug logging
+    if (process.client && itemWasteCategories.length > 0) {
+      console.log(`Item: ${item.nameEn}, wasteCategories:`, itemWasteCategories)
+    }
+    
     if (grouped.has(key)) {
       const existing = grouped.get(key)!
+      // Merge waste categories (unique values only)
+      const mergedWasteCategories = [...(existing.wasteCategories || [])]
+      itemWasteCategories.forEach(cat => {
+        if (!mergedWasteCategories.includes(cat)) {
+          mergedWasteCategories.push(cat)
+        }
+      })
+      
+      // Keep the latest purchase date
+      const latestPurchaseDate = new Date(item.purchaseDate) > new Date(existing.purchaseDate) 
+        ? item.purchaseDate 
+        : existing.purchaseDate
+      
       // Create a new object instead of mutating
       grouped.set(key, {
         ...existing,
@@ -266,19 +310,28 @@ const groupedStock = computed(() => {
         ids: [...existing.ids, item.id],
         price: item.price || existing.price,
         category: item.category || existing.category,
-        wasteCategory: item.wasteCategory || existing.wasteCategory
+        wasteCategories: mergedWasteCategories,
+        purchaseDate: latestPurchaseDate
       })
     } else {
       grouped.set(key, {
         ...item,
         ids: [item.id],
         totalQuantity: item.quantity,
-        displayName: getItemName(item, language.value)
+        displayName: getItemName(item, language.value),
+        wasteCategories: itemWasteCategories
       })
     }
   })
   
-  return Array.from(grouped.values())
+  const result = Array.from(grouped.values())
+  
+  // Debug final result
+  if (process.client && result.length > 0) {
+    console.log('Grouped stock sample:', result[0])
+  }
+  
+  return result
 })
 
 // Get available categories from stock
@@ -351,42 +404,57 @@ const totalQuantityByUnit = computed(() => {
 })
 
 const formatDate = (date: Date) => {
-  return new Date(date).toLocaleDateString('en-US', { 
+  return new Date(date).toLocaleString('en-US', { 
     month: 'short', 
     day: 'numeric', 
-    year: 'numeric' 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
   })
 }
 
 // Get category badge color class
 const getCategoryBadgeClass = (category: string) => {
   const colorMap: Record<string, string> = {
-    'Vegetables': 'bg-green-100 text-green-700',
-    'Fruits': 'bg-orange-100 text-orange-700',
-    'Meat': 'bg-red-100 text-red-700',
-    'Fish & Seafood': 'bg-cyan-100 text-cyan-700',
-    'Dairy': 'bg-blue-100 text-blue-700',
-    'Bakery': 'bg-amber-100 text-amber-700',
-    'Beverages': 'bg-purple-100 text-purple-700',
-    'Pantry': 'bg-yellow-100 text-yellow-700',
-    'Snacks': 'bg-pink-100 text-pink-700',
-    'Frozen': 'bg-sky-100 text-sky-700',
-    'Other': 'bg-gray-100 text-gray-700'
+    'Vegetables': 'bg-green-100 text-green-700 border-green-200',
+    'Fruits': 'bg-orange-100 text-orange-700 border-orange-200',
+    'Meat': 'bg-red-100 text-red-700 border-red-200',
+    'Fish & Seafood': 'bg-cyan-100 text-cyan-700 border-cyan-200',
+    'Dairy': 'bg-blue-100 text-blue-700 border-blue-200',
+    'Bakery': 'bg-amber-100 text-amber-700 border-amber-200',
+    'Beverages': 'bg-purple-100 text-purple-700 border-purple-200',
+    'Pantry': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+    'Snacks': 'bg-pink-100 text-pink-700 border-pink-200',
+    'Frozen': 'bg-sky-100 text-sky-700 border-sky-200',
+    'Other': 'bg-gray-100 text-gray-700 border-gray-200'
   }
-  return colorMap[category] || 'bg-gray-100 text-gray-700'
+  return colorMap[category] || 'bg-gray-100 text-gray-700 border-gray-200'
 }
 
-// Get waste category badge color class - earthy/muted tones
+// Get waste category badge color class - distinctive styling for packaging info
 const getWasteCategoryBadgeClass = (wasteCategory: string) => {
   const colorMap: Record<string, string> = {
-    'Plastic': 'bg-rose-50 text-rose-700',
-    'Glass': 'bg-teal-50 text-teal-700',
-    'Paper': 'bg-stone-100 text-stone-700',
-    'Metal': 'bg-zinc-100 text-zinc-700',
-    'Organic': 'bg-emerald-50 text-emerald-700',
-    'Mixed': 'bg-indigo-50 text-indigo-700'
+    'Plastic': 'bg-red-100 text-red-700 border-red-200',
+    'Glass': 'bg-cyan-100 text-cyan-700 border-cyan-200',
+    'Paper': 'bg-amber-100 text-amber-700 border-amber-200',
+    'Metal': 'bg-slate-100 text-slate-700 border-slate-200',
+    'Organic': 'bg-green-100 text-green-700 border-green-200',
+    'Mixed': 'bg-purple-100 text-purple-700 border-purple-200'
   }
-  return colorMap[wasteCategory] || 'bg-gray-50 text-gray-700'
+  return colorMap[wasteCategory] || 'bg-gray-100 text-gray-700 border-gray-200'
+}
+
+// Get waste category icon
+const getWasteCategoryIcon = (wasteCategory: string) => {
+  const iconMap: Record<string, string> = {
+    'Plastic': 'i-heroicons-beaker',
+    'Glass': 'i-heroicons-square-3-stack-3d',
+    'Paper': 'i-heroicons-document',
+    'Metal': 'i-heroicons-cube',
+    'Organic': 'i-heroicons-sparkles',
+    'Mixed': 'i-heroicons-rectangle-stack'
+  }
+  return iconMap[wasteCategory] || 'i-heroicons-trash'
 }
 
 const handleDelete = (item: StockItem & { ids: string[], totalQuantity: number }) => {

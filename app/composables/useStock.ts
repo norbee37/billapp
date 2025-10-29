@@ -16,7 +16,7 @@ export const useStock = () => {
     }
   }
 
-  const addToStock = async (items: Omit<StockItem, 'id' | 'addedAt'>[]) => {
+  const addToStock = async (items: Omit<StockItem, 'id' | 'createdAt'>[]) => {
     try {
       const newItems = await $fetch<StockItem[]>('/api/stock', {
         method: 'POST',
