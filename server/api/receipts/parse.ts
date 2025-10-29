@@ -133,7 +133,27 @@ RULES:
 6. If quantity is unclear, assume 1 piece
 7. Ignore non-product lines (payment info, store details, promotions)
 8. **CRITICAL: Extract the PURCHASE DATE AND TIME from the receipt (look for date/time near the top)**
-9. **CRITICAL: Determine ALL PACKAGING TYPES for waste management (products can have MULTIPLE types)**
+9. **CRITICAL: PREDICT EXPIRATION/FRESHNESS for each product based on type and storage**
+10. **CRITICAL: Determine ALL PACKAGING TYPES for waste management (products can have MULTIPLE types)**
+
+FRESHNESS PREDICTION GUIDELINES:
+- Consider product type, category, and typical shelf life
+- Account for storage conditions (refrigerated, frozen, room temp)
+- Predict DAYS_UNTIL_EXPIRATION from purchase date
+- Be realistic and food-safety conscious
+
+TYPICAL FRESHNESS PERIODS:
+- **Fresh Meat/Poultry**: 1-2 days (refrigerated)
+- **Fresh Fish/Seafood**: 1-2 days (refrigerated)
+- **Dairy (Milk, Yogurt)**: 5-7 days (refrigerated, unopened)
+- **Cheese (hard)**: 14-30 days (refrigerated)
+- **Fresh Vegetables**: 3-7 days (refrigerated)
+- **Fresh Fruits**: 3-10 days (room temp or refrigerated)
+- **Bread**: 2-3 days (room temp)
+- **Eggs**: 21-28 days (refrigerated)
+- **Frozen items**: 90-180 days (frozen)
+- **Pantry staples**: 180-365 days (dry, sealed)
+- **Canned goods**: 365+ days (sealed)
 
 PACKAGING DETECTION - IMPORTANT GUIDELINES:
 - **Many products have MULTIPLE packaging components** - list ALL of them
@@ -199,7 +219,8 @@ OUTPUT FORMAT (JSON only, no markdown):
       "quantity": 1.5,
       "unit": "kg|g|L|ml|pcs",
       "price": 2.99,
-      "packaging": ["plastic", "paper"]
+      "packaging": ["plastic", "paper"],
+      "daysUntilExpiration": 3
     }
   ]
 }
@@ -207,6 +228,7 @@ OUTPUT FORMAT (JSON only, no markdown):
 Return ONLY valid JSON, nothing else. Every item MUST have:
 - All three name fields (nameEn, nameDe, nameHu)
 - A packaging field as an ARRAY (even if just one type, e.g., ["organic"])
+- daysUntilExpiration as a NUMBER (realistic estimate based on product type)
 - Think carefully about ALL packaging components!
 - The purchaseDate field in ISO format (YYYY-MM-DDTHH:MM:SS), including time if available on receipt`
 
@@ -243,21 +265,29 @@ async function parseReceiptWithGemini(imageData: Buffer, mimeType: string): Prom
     // Extract purchase date from the receipt, default to today if not found
     const purchaseDate = parsed.purchaseDate ? new Date(parsed.purchaseDate) : new Date()
     
-    const items: ParsedItem[] = parsed.items.map((item: any) => ({
-      nameEn: item.nameEn || item.name || 'Unknown',
-      nameDe: item.nameDe || item.name || 'Unbekannt',
-      nameHu: item.nameHu || item.name || 'Ismeretlen',
-      quantity: item.quantity || 1,
-      unit: item.unit || 'pcs',
-      price: item.price || 0,
-      category: categorizeProduct(item.nameEn || item.name || ''),
-      wasteCategories: item.packaging 
-        ? (Array.isArray(item.packaging) 
-            ? categorizeWaste(item.packaging.join(' ')) 
-            : categorizeWaste(item.packaging))
-        : ['Plastic'],
-      purchaseDate  // Add purchase date to each item
-    }))
+    const items: ParsedItem[] = parsed.items.map((item: any) => {
+      // Calculate expiration date from daysUntilExpiration
+      const expiresAt = item.daysUntilExpiration 
+        ? new Date(purchaseDate.getTime() + item.daysUntilExpiration * 24 * 60 * 60 * 1000)
+        : undefined
+      
+      return {
+        nameEn: item.nameEn || item.name || 'Unknown',
+        nameDe: item.nameDe || item.name || 'Unbekannt',
+        nameHu: item.nameHu || item.name || 'Ismeretlen',
+        quantity: item.quantity || 1,
+        unit: item.unit || 'pcs',
+        price: item.price || 0,
+        category: categorizeProduct(item.nameEn || item.name || ''),
+        wasteCategories: item.packaging 
+          ? (Array.isArray(item.packaging) 
+              ? categorizeWaste(item.packaging.join(' ')) 
+              : categorizeWaste(item.packaging))
+          : ['Plastic'],
+        purchaseDate,
+        expiresAt
+      }
+    })
 
     return items
   } catch (error) {
@@ -324,25 +354,34 @@ function generateMockItems(): ParsedItem[] {
   mockPurchaseDate.setHours(14, 35, 0, 0) // Set to 14:35:00
   
   const sampleProducts = [
-    { nameEn: 'Organic Apples', nameDe: 'Bio Äpfel', nameHu: 'Bio Alma', quantity: 1.5, unit: 'kg', price: 4.99, packaging: 'organic' },
-    { nameEn: 'Whole Milk', nameDe: 'Vollmilch', nameHu: 'Teljes Tej', quantity: 2, unit: 'L', price: 3.49, packaging: 'mixed plastic' },
-    { nameEn: 'Bread', nameDe: 'Brot', nameHu: 'Kenyér', quantity: 1, unit: 'loaf', price: 2.99, packaging: 'paper plastic' },
-    { nameEn: 'Eggs', nameDe: 'Eier', nameHu: 'Tojás', quantity: 12, unit: 'pcs', price: 4.99, packaging: 'paper' },
-    { nameEn: 'Chicken Breast', nameDe: 'Hähnchenbrust', nameHu: 'Csirkemell', quantity: 0.8, unit: 'kg', price: 9.99, packaging: 'plastic paper' },
-    { nameEn: 'Tomatoes', nameDe: 'Tomaten', nameHu: 'Paradicsom', quantity: 0.5, unit: 'kg', price: 2.49, packaging: 'organic' },
-    { nameEn: 'Orange Juice', nameDe: 'Orangensaft', nameHu: 'Narancslé', quantity: 1, unit: 'L', price: 3.99, packaging: 'mixed plastic' },
-    { nameEn: 'Butter', nameDe: 'Butter', nameHu: 'Vaj', quantity: 250, unit: 'g', price: 3.49, packaging: 'paper plastic' },
-    { nameEn: 'Pasta', nameDe: 'Nudeln', nameHu: 'Tészta', quantity: 500, unit: 'g', price: 1.99, packaging: 'plastic paper' },
-    { nameEn: 'Cheese', nameDe: 'Käse', nameHu: 'Sajt', quantity: 200, unit: 'g', price: 4.49, packaging: 'plastic paper' }
+    { nameEn: 'Organic Apples', nameDe: 'Bio Äpfel', nameHu: 'Bio Alma', quantity: 1.5, unit: 'kg', price: 4.99, packaging: 'organic', daysUntilExpiration: 7 },
+    { nameEn: 'Whole Milk', nameDe: 'Vollmilch', nameHu: 'Teljes Tej', quantity: 2, unit: 'L', price: 3.49, packaging: 'mixed plastic', daysUntilExpiration: 6 },
+    { nameEn: 'Bread', nameDe: 'Brot', nameHu: 'Kenyér', quantity: 1, unit: 'loaf', price: 2.99, packaging: 'paper plastic', daysUntilExpiration: 2 },
+    { nameEn: 'Eggs', nameDe: 'Eier', nameHu: 'Tojás', quantity: 12, unit: 'pcs', price: 4.99, packaging: 'paper', daysUntilExpiration: 25 },
+    { nameEn: 'Chicken Breast', nameDe: 'Hähnchenbrust', nameHu: 'Csirkemell', quantity: 0.8, unit: 'kg', price: 9.99, packaging: 'plastic paper', daysUntilExpiration: 1 },
+    { nameEn: 'Tomatoes', nameDe: 'Tomaten', nameHu: 'Paradicsom', quantity: 0.5, unit: 'kg', price: 2.49, packaging: 'organic', daysUntilExpiration: 5 },
+    { nameEn: 'Orange Juice', nameDe: 'Orangensaft', nameHu: 'Narancslé', quantity: 1, unit: 'L', price: 3.99, packaging: 'mixed plastic', daysUntilExpiration: 10 },
+    { nameEn: 'Butter', nameDe: 'Butter', nameHu: 'Vaj', quantity: 250, unit: 'g', price: 3.49, packaging: 'paper plastic', daysUntilExpiration: 14 },
+    { nameEn: 'Pasta', nameDe: 'Nudeln', nameHu: 'Tészta', quantity: 500, unit: 'g', price: 1.99, packaging: 'plastic paper', daysUntilExpiration: 365 },
+    { nameEn: 'Cheese', nameDe: 'Käse', nameHu: 'Sajt', quantity: 200, unit: 'g', price: 4.49, packaging: 'plastic paper', daysUntilExpiration: 20 }
   ]
 
-  // Return 3-6 random items with categories
+  // Return 3-6 random items with categories and expiration
   const numItems = Math.floor(Math.random() * 4) + 3
   const shuffled = sampleProducts.sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, numItems).map(item => ({
-    ...item,
-    category: categorizeProduct(item.nameEn),
-    wasteCategories: categorizeWaste(item.packaging),
-    purchaseDate: mockPurchaseDate
-  }))
+  return shuffled.slice(0, numItems).map(item => {
+    const expiresAt = new Date(mockPurchaseDate.getTime() + item.daysUntilExpiration * 24 * 60 * 60 * 1000)
+    return {
+      nameEn: item.nameEn,
+      nameDe: item.nameDe,
+      nameHu: item.nameHu,
+      quantity: item.quantity,
+      unit: item.unit,
+      price: item.price,
+      category: categorizeProduct(item.nameEn),
+      wasteCategories: categorizeWaste(item.packaging),
+      purchaseDate: mockPurchaseDate,
+      expiresAt
+    }
+  })
 }

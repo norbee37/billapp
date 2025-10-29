@@ -200,14 +200,6 @@
                   <span class="text-gray-700 font-semibold">Price:</span>
                   <span class="text-green-700 font-bold ml-auto text-lg">€{{ item.price.toFixed(2) }}</span>
                 </div>
-                
-                <div v-if="item.expiresAt" class="flex items-center gap-3 text-base">
-                  <div class="w-9 h-9 bg-yellow-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <UIcon name="i-heroicons-calendar" class="text-yellow-600 text-lg" />
-                  </div>
-                  <span class="text-gray-700 font-semibold">Expires:</span>
-                  <span class="text-gray-900 font-bold ml-auto">{{ formatDate(item.expiresAt) }}</span>
-                </div>
 
                 <div class="flex items-center gap-3 text-sm pt-2 border-t border-gray-100">
                   <div class="w-8 h-8 bg-gray-50 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -216,6 +208,15 @@
                   <span class="text-gray-600 font-medium">Purchased:</span>
                   <span class="text-gray-500 font-semibold ml-auto">{{ formatDate(item.purchaseDate) }}</span>
                 </div>
+              </div>
+
+              <!-- Freshness Indicator at Bottom -->
+              <div v-if="item.earliestExpiration || item.expiresAt" class="mt-4">
+                <FreshnessIndicator 
+                  :expiresAt="item.earliestExpiration || item.expiresAt"
+                  :showBreakdown="item.ids && item.ids.length > 1"
+                  :breakdown="item.freshnessBreakdown"
+                />
               </div>
             </div>
           </div>
@@ -274,7 +275,7 @@ onMounted(() => {
 
 // Group items by English name (ID) and unit, sum quantities
 const groupedStock = computed(() => {
-  const grouped = new Map<string, StockItem & { ids: string[], totalQuantity: number, displayName: string }>()
+  const grouped = new Map<string, StockItem & { ids: string[], totalQuantity: number, displayName: string, earliestExpiration?: Date, freshnessBreakdown?: any }>()
   
   stock.value.forEach(item => {
     const key = `${item.nameEn.toLowerCase()}_${item.unit || 'pcs'}`
@@ -303,6 +304,14 @@ const groupedStock = computed(() => {
         ? item.purchaseDate 
         : existing.purchaseDate
       
+      // Keep the earliest expiration date
+      let earliestExpiration = existing.earliestExpiration
+      if (item.expiresAt) {
+        if (!earliestExpiration || new Date(item.expiresAt) < new Date(earliestExpiration)) {
+          earliestExpiration = item.expiresAt
+        }
+      }
+      
       // Create a new object instead of mutating
       grouped.set(key, {
         ...existing,
@@ -311,7 +320,8 @@ const groupedStock = computed(() => {
         price: item.price || existing.price,
         category: item.category || existing.category,
         wasteCategories: mergedWasteCategories,
-        purchaseDate: latestPurchaseDate
+        purchaseDate: latestPurchaseDate,
+        earliestExpiration
       })
     } else {
       grouped.set(key, {
@@ -319,8 +329,37 @@ const groupedStock = computed(() => {
         ids: [item.id],
         totalQuantity: item.quantity,
         displayName: getItemName(item, language.value),
-        wasteCategories: itemWasteCategories
+        wasteCategories: itemWasteCategories,
+        earliestExpiration: item.expiresAt
       })
+    }
+  })
+  
+  // Calculate freshness breakdown for each grouped item
+  grouped.forEach((groupedItem, key) => {
+    if (groupedItem.ids.length > 1) {
+      // Get all items in this group
+      const itemsInGroup = stock.value.filter(item => groupedItem.ids.includes(item.id))
+      
+      // Calculate breakdown
+      const breakdown = {
+        fresh: 0,
+        useSoon: 0,
+        expiring: 0,
+        expired: 0
+      }
+      
+      itemsInGroup.forEach(item => {
+        if (item.expiresAt) {
+          const days = Math.ceil((new Date(item.expiresAt).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+          if (days < 0) breakdown.expired++
+          else if (days <= 3) breakdown.expiring++
+          else if (days <= 7) breakdown.useSoon++
+          else breakdown.fresh++
+        }
+      })
+      
+      groupedItem.freshnessBreakdown = breakdown
     }
   })
   

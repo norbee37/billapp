@@ -97,6 +97,11 @@
                   </div>
                 </div>
 
+                <!-- Freshness Indicator -->
+                <div v-if="entry.expiresAt" class="bg-gradient-to-r from-blue-50 to-white rounded-lg p-3 border-2 border-blue-100">
+                  <FreshnessIndicator :expiresAt="entry.expiresAt" />
+                </div>
+
                 <div v-if="entry.category" class="flex items-center gap-3">
                   <div class="w-9 h-9 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
                     <UIcon name="i-heroicons-tag" class="text-purple-600 text-lg" />
